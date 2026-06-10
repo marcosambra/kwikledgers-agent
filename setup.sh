@@ -41,15 +41,22 @@ if [ ! -f "$ENV_FILE" ]; then
 fi
 
 # --- 5. Exportar variaveis no shell profile ---
-PROFILE_FILE="$HOME/.bashrc"
-[ -n "$ZSH_VERSION" ] && PROFILE_FILE="$HOME/.zshrc"
+# Detecta o shell atual pelo processo pai, nao pela variavel (mais confiavel)
+CURRENT_SHELL=$(ps -p $PPID -o comm= 2>/dev/null || echo "bash")
+if echo "$CURRENT_SHELL" | grep -q "zsh"; then
+  PROFILE_FILE="$HOME/.zshrc"
+elif echo "$CURRENT_SHELL" | grep -q "fish"; then
+  PROFILE_FILE="$HOME/.config/fish/config.fish"
+else
+  PROFILE_FILE="$HOME/.bashrc"
+fi
 
 MARKER="# kwikledgers-agent"
 if ! grep -q "$MARKER" "$PROFILE_FILE" 2>/dev/null; then
   echo "" >> "$PROFILE_FILE"
   echo "$MARKER" >> "$PROFILE_FILE"
   echo "set -a && [ -f $ENV_FILE ] && source $ENV_FILE && set +a" >> "$PROFILE_FILE"
-  echo "Variaveis do .env configuradas para carregar automaticamente em novos terminais."
+  echo "Variaveis do .env configuradas em: $PROFILE_FILE"
 fi
 
 echo ""
