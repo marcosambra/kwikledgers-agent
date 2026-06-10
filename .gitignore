@@ -1,0 +1,27 @@
+﻿# Variaveis de ambiente - NUNCA commitar
+.env
+*.env
+
+# Dependencias Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+
+# Dependencias Node
+node_modules/
+
+# IDEs
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
