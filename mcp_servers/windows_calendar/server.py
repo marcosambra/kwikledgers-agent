@@ -7,6 +7,20 @@ import sys
 import asyncio
 import subprocess
 from datetime import datetime, timedelta
+from pathlib import Path
+
+# Carrega .env automaticamente
+_env_file = Path(__file__).parent.parent.parent / ".env"
+if _env_file.exists():
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(_env_file)
+    except ImportError:
+        for line in _env_file.read_text().splitlines():
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, _, v = line.partition("=")
+                os.environ.setdefault(k.strip(), v.strip())
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server

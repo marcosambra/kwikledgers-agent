@@ -1,13 +1,8 @@
 ﻿{
   "mcpServers": {
     "kwikledgers-azure-devops": {
-      "command": "python",
-      "args": ["${workspaceFolder}/agent/mcp_servers/azure_devops/server.py"],
-      "env": {
-        "AZURE_ORG_URL": "${env:AZURE_ORG_URL}",
-        "AZURE_PAT": "${env:AZURE_PAT}",
-        "AZURE_PROJECT": "${env:AZURE_PROJECT}"
-      }
+      "command": "bash",
+      "args": ["${workspaceFolder}/agent/mcp_servers/azure_devops/run.sh"]
     },
     "postman": {
       "command": "npx",
@@ -21,8 +16,8 @@
       "args": ["-y", "@modelcontextprotocol/server-puppeteer"]
     },
     "kwikledgers-windows": {
-      "command": "python",
-      "args": ["${workspaceFolder}/agent/mcp_servers/windows_calendar/server.py"]
+      "command": "bash",
+      "args": ["${workspaceFolder}/agent/mcp_servers/windows_calendar/run.sh"]
     }
   }
 }

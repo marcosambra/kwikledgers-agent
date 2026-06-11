@@ -6,7 +6,22 @@ import os
 import asyncio
 import subprocess
 from datetime import datetime
+from pathlib import Path
 from typing import Optional
+
+# Carrega .env automaticamente - nao precisa configurar variaveis no shell
+_env_file = Path(__file__).parent.parent.parent / ".env"
+if _env_file.exists():
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(_env_file)
+    except ImportError:
+        # fallback manual caso dotenv nao esteja instalado ainda
+        for line in _env_file.read_text().splitlines():
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, _, v = line.partition("=")
+                os.environ.setdefault(k.strip(), v.strip())
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
