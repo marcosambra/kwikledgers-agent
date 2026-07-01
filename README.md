@@ -13,6 +13,36 @@ Agente de desenvolvimento integrado ao VS Code que:
 - Analisa a estrutura do projeto para manter consistencia tecnica quando os repositorios estiverem em `projects/`
 - Envia notificacoes e gerencia lembretes no Windows (inclusive via WSL)
 
+## English
+
+### First Steps
+
+1. Run `setup.sh` on Linux or WSL, or `setup.ps1` on Windows.
+2. Fill the `.env` file with Azure DevOps credentials and project settings.
+3. Open the workspace in VS Code and allow the MCP servers.
+4. Select `KwikLedgers Dev Agent` in Copilot Chat.
+5. Start with a daily summary and a local tracking sync.
+
+### How To Use
+
+Use this repository when you need the agent runtime itself, not product
+application code.
+
+Typical prompts:
+
+- `Show my daily Azure summary.`
+- `Update my local sprint tracking files.`
+- `Do I have blocked or returned items?`
+- `Register today's AI usage metrics.`
+
+### Repository Guides
+
+- [CONTRIBUTING.md](CONTRIBUTING.md)
+- [SECURITY.md](SECURITY.md)
+- [Bug report template](.github/ISSUE_TEMPLATE/bug_report.md)
+- [Feature request template](.github/ISSUE_TEMPLATE/feature_request.md)
+- [Documentation update template](.github/ISSUE_TEMPLATE/documentation_update.md)
+
 ## Recommended License Structure
 
 For internal company use, the recommended structure is:
@@ -145,6 +175,23 @@ Reinicie o terminal apos configurar.
    - Code: Read
    - Pull Request Threads: Read & Write
 6. Copie o token gerado para AZURE_PAT
+
+## Primeiros Passos
+
+1. Rode `setup.sh` no Linux ou WSL, ou `setup.ps1` no Windows.
+2. Preencha o arquivo `.env` com as credenciais do Azure DevOps e as
+  configuracoes do projeto.
+3. Abra o workspace no VS Code e autorize os MCP servers.
+4. Selecione `KwikLedgers Dev Agent` no Copilot Chat.
+5. Comece com o resumo diario e a sincronizacao do tracking local.
+
+## Guias Do Repositorio
+
+- [CONTRIBUTING.md](CONTRIBUTING.md)
+- [SECURITY.md](SECURITY.md)
+- [Template de bug](.github/ISSUE_TEMPLATE/bug_report.md)
+- [Template de funcionalidade](.github/ISSUE_TEMPLATE/feature_request.md)
+- [Template de documentacao](.github/ISSUE_TEMPLATE/documentation_update.md)
 
 ## Como Usar
 
