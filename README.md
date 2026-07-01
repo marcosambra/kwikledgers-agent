@@ -1,10 +1,10 @@
 ﻿# KwikLedgers Dev Agent
 
 Agente de desenvolvimento integrado ao VS Code que:
-- Acessa o Azure DevOps para listar suas historias e PRs
-- Analisa a estrutura do projeto para manter consistencia tecnica
-- Implementa historias seguindo os padroes KwikLedgers (PHP/Laravel, Angular)
-- Executa testes via Postman MCP e Puppeteer
+- Acessa o Azure DevOps para listar historias, tasks, bugs e PRs do usuario ativo
+- Gera arquivos locais de controle do sprint, log diario e metricas de IA
+- Destaca bloqueios, itens devolvidos por mudanca de estado e story points restantes
+- Analisa a estrutura do projeto para manter consistencia tecnica quando os repositorios estiverem em `projects/`
 - Envia notificacoes e gerencia lembretes no Windows (inclusive via WSL)
 
 ## Estrutura
@@ -17,6 +17,9 @@ agent/
   mcp_servers/
     azure_devops/
       server.py                  <- MCP Server: Azure DevOps
+      requirements.txt
+    local_tracking/
+      server.py                  <- MCP Server: gera AI_Tracking/
       requirements.txt
     windows_calendar/
       server.py                  <- MCP Server: Windows Calendar + Notificacoes
@@ -61,8 +64,8 @@ Preencha os valores:
 ```
 AZURE_ORG_URL=https://dev.azure.com/viwaredevops
 AZURE_PAT=seu_personal_access_token
+AZURE_USER_EMAIL=seu_email@empresa.com
 AZURE_PROJECT=Kwik Ledgers
-POSTMAN_API_KEY=sua_api_key_postman
 ```
 
 #### Passo 4: Recarregar o shell
@@ -119,35 +122,38 @@ Reinicie o terminal apos configurar.
    - Pull Request Threads: Read & Write
 6. Copie o token gerado para AZURE_PAT
 
-## Gerando a Postman API Key
-
-1. Acesse: https://app.postman.com/settings/me/api-keys
-2. "+ Generate API Key"
-3. Copie para POSTMAN_API_KEY
-
----
-
 ## Como Usar
 
 Abra o Copilot Chat (Ctrl+Alt+I), selecione o agente KwikLedgers Dev Agent e fale:
 
 | O que voce quer | O que dizer |
 |---|---|
-| Ver historias do sprint | "Quais sao minhas historias do sprint?" |
+| Ver resumo do sprint | "Quais sao minhas tasks e historias do sprint atual?" |
+| Ver itens bloqueados | "Tenho algum item bloqueado no sprint atual?" |
+| Gerar controle local | "Atualize meus arquivos de controle do sprint em AI_Tracking." |
+| Registrar atividade diaria | "Registre no log diario que revisei a KL-456 e atualizei seu status." |
+| Registrar metricas | "Registre as metricas operacionais de IA desta revisao." |
 | Implementar uma historia | "Quero implementar a historia KL-789" |
 | Ver PRs abertas | "Tenho alguma PR aberta?" |
 | Ver prazos | "Quando termina o sprint atual?" |
 | Criar lembrete | "Me lembra amanha as 9h sobre a KL-456" |
-| Rodar testes | "Execute os testes do Postman para o accountant_backend" |
 
 ## Ferramentas MCP disponíveis
 
 | MCP Server | Ferramentas |
 |---|---|
-| kwikledgers-azure-devops | get_active_user, get_user_stories, get_sprint_stories, get_story_details, get_open_prs, update_story_status, add_story_comment |
-| postman | run_collection, run_request, get_collections |
-| puppeteer | navigate, screenshot, click, fill, evaluate |
+| kwikledgers-azure-devops | get_active_user, get_my_work_items, get_my_blocked_items, get_my_daily_summary, get_user_stories, get_sprint_stories, get_story_details, get_open_prs, update_story_status, add_story_comment |
+| kwikledgers-local-tracking | update_task_control, append_daily_action_log, record_ai_metrics, read_tracking_snapshot |
 | kwikledgers-windows | send_notification, create_calendar_event, get_upcoming_deadlines, schedule_reminder |
+
+## Saidas Locais
+
+O agente passa a gerar arquivos em `AI_Tracking/` na raiz do workspace:
+
+- `AI_Tracking/Task_Control/current-sprint.json`
+- `AI_Tracking/Task_Control/current-sprint.md`
+- `AI_Tracking/Daily_Action_Logs/YYYY-MM-DD.md`
+- `AI_Tracking/Metrics/ai-usage-log.md`
 
 ## Solucao de Problemas
 
@@ -162,6 +168,13 @@ pip3 install -r mcp_servers/azure_devops/requirements.txt
 echo $AZURE_PAT   # deve imprimir o token
 ```
 Se vazio: `source ~/.bashrc` e tente novamente.
+
+**Resumo nao encontra items do usuario:**
+```bash
+echo $AZURE_USER_EMAIL
+git config --global user.email
+```
+Defina `AZURE_USER_EMAIL` se o email do Azure DevOps nao for o mesmo do git.
 
 **Notificacoes nao aparecem no WSL:**
 - Verifique se o powershell.exe esta acessivel: `which powershell.exe`

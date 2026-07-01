@@ -4,16 +4,9 @@
       "command": "bash",
       "args": ["${workspaceFolder}/agent/mcp_servers/azure_devops/run.sh"]
     },
-    "postman": {
-      "command": "npx",
-      "args": ["-y", "@postman/mcp-server"],
-      "env": {
-        "POSTMAN_API_KEY": "${env:POSTMAN_API_KEY}"
-      }
-    },
-    "puppeteer": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-puppeteer"]
+    "kwikledgers-local-tracking": {
+      "command": "bash",
+      "args": ["${workspaceFolder}/agent/mcp_servers/local_tracking/run.sh"]
     },
     "kwikledgers-windows": {
       "command": "bash",

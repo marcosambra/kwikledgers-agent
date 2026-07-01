@@ -25,11 +25,10 @@ pip3 install -r "$SCRIPT_DIR/mcp_servers/windows_calendar/requirements.txt" || {
   pip3 install mcp winotify 2>/dev/null || pip3 install mcp
 }
 
-# --- 3. Node.js - Postman e Puppeteer (instalados sob demanda via npx) ---
+# --- 3. Dependencias Python - Tracking local MCP ---
 echo ""
-echo "[3/3] Verificando Node.js..."
-node --version
-npx --version
+echo "[3/3] Instalando dependencias do MCP Local Tracking..."
+pip3 install -r "$SCRIPT_DIR/mcp_servers/local_tracking/requirements.txt"
 
 # --- 4. Variaveis de ambiente ---
 ENV_FILE="$SCRIPT_DIR/.env"
@@ -68,6 +67,7 @@ echo "  2. Recarregue o shell:        source $PROFILE_FILE"
 echo "  3. Copie o mcp.json para o workspace:"
 echo "     cp $SCRIPT_DIR/.vscode/mcp.json /caminho/para/Kwikledgers/.vscode/mcp.json"
 echo "  4. Reinicie o VS Code"
+echo "  5. Use o resumo diario do Azure para gerar arquivos em AI_Tracking/"
 echo ""
 echo "Para gerar seu Azure PAT:"
 echo "  https://dev.azure.com/viwaredevops/_usersSettings/tokens"

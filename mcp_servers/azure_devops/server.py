@@ -3,11 +3,12 @@ KwikLedgers - MCP Server: Azure DevOps
 Expoe ferramentas para o agente interagir com historias, PRs e sprints.
 """
 import os
+import json
 import asyncio
 import subprocess
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 # Carrega .env automaticamente - nao precisa configurar variaveis no shell
 _env_file = Path(__file__).parent.parent.parent / ".env"
@@ -54,6 +55,9 @@ server = Server("kwikledgers-azure-devops")
 async def list_tools() -> list[Tool]:
     return [
         Tool(name="get_active_user", description="Retorna o email do usuario ativo via git config"),
+        Tool(name="get_my_work_items", description="Lista historias, tasks e bugs atribuidos ao usuario ativo no sprint atual"),
+        Tool(name="get_my_blocked_items", description="Lista itens bloqueados atribuidos ao usuario ativo no sprint atual"),
+        Tool(name="get_my_daily_summary", description="Retorna um resumo JSON do sprint atual com itens do usuario ativo, bloqueios, PRs e story points restantes"),
         Tool(name="get_user_stories", description="Lista historias do Azure DevOps atribuidas ao email informado",
              inputSchema={"type": "object", "properties": {"email": {"type": "string"}}, "required": ["email"]}),
         Tool(name="get_sprint_stories", description="Lista todas as historias do sprint atual do projeto"),
@@ -84,6 +88,12 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
 async def _dispatch(name: str, arguments: dict) -> str:
     if name == "get_active_user":
         return _get_active_user()
+    if name == "get_my_work_items":
+        return _get_my_work_items()
+    if name == "get_my_blocked_items":
+        return _get_my_blocked_items()
+    if name == "get_my_daily_summary":
+        return _get_my_daily_summary()
     if name == "get_user_stories":
         return _get_user_stories(arguments["email"])
     if name == "get_sprint_stories":
@@ -101,19 +111,164 @@ async def _dispatch(name: str, arguments: dict) -> str:
 
 # --- Implementacoes das ferramentas ---
 
-def _get_active_user() -> str:
-    """Le o email do git config local ou global."""
-    try:
-        result = subprocess.run(
-            ["git", "config", "user.email"],
-            capture_output=True, text=True, timeout=5
-        )
+def _resolve_active_user_email() -> Optional[str]:
+    configured_email = os.environ.get("AZURE_USER_EMAIL", "").strip()
+    if configured_email:
+        return configured_email
+
+    for command in (["git", "config", "user.email"], ["git", "config", "--global", "user.email"]):
+        try:
+            result = subprocess.run(command, capture_output=True, text=True, timeout=5)
+        except Exception:
+            continue
+
         email = result.stdout.strip()
         if email:
-            return f"Usuario ativo: {email}"
-        return "Email nao configurado no git. Configure com: git config --global user.email seu@email.com"
-    except Exception as e:
-        return f"Nao foi possivel obter o usuario: {e}"
+            return email
+
+    return None
+
+
+def _format_json(payload: dict[str, Any]) -> str:
+    return json.dumps(payload, indent=2, ensure_ascii=True)
+
+
+def _is_blocked_item(fields: dict[str, Any]) -> bool:
+    state = str(fields.get("System.State", "")).strip().lower()
+    tags = str(fields.get("System.Tags", "")).strip().lower()
+    return state in {"blocked", "impeded"} or "blocked" in tags or "impediment" in tags
+
+
+def _query_assigned_items(email: str) -> list[dict[str, Any]]:
+    connection = get_client()
+    wit = connection.clients.get_work_item_tracking_client()
+
+    query = Wiql(query=f"""
+        SELECT [System.Id], [System.Title], [System.State], [System.WorkItemType],
+               [System.IterationPath], [System.ChangedDate],
+               [Microsoft.VSTS.Scheduling.StoryPoints], [Microsoft.VSTS.Scheduling.RemainingWork],
+               [System.Tags]
+        FROM WorkItems
+        WHERE [System.AssignedTo] = '{email}'
+          AND [System.IterationPath] = @CurrentIteration
+          AND [System.WorkItemType] IN ('User Story', 'Task', 'Bug')
+          AND [System.State] NOT IN ('Closed', 'Removed', 'Done')
+        ORDER BY [System.ChangedDate] DESC
+    """)
+
+    result = wit.query_by_wiql(query, project=get_project())
+    if not result.work_items:
+        return []
+
+    ids = [str(work_item.id) for work_item in result.work_items]
+    items = wit.get_work_items(ids=ids, fields=[
+        "System.Id", "System.Title", "System.State", "System.WorkItemType",
+        "System.IterationPath", "System.ChangedDate", "System.Tags",
+        "Microsoft.VSTS.Scheduling.StoryPoints", "Microsoft.VSTS.Scheduling.RemainingWork"
+    ])
+
+    serialized_items: list[dict[str, Any]] = []
+    for item in items:
+        fields = item.fields
+        serialized_items.append({
+            "id": fields.get("System.Id"),
+            "title": fields.get("System.Title"),
+            "state": fields.get("System.State"),
+            "work_item_type": fields.get("System.WorkItemType"),
+            "iteration_path": fields.get("System.IterationPath"),
+            "changed_at": str(fields.get("System.ChangedDate", "")),
+            "story_points": fields.get("Microsoft.VSTS.Scheduling.StoryPoints") or 0,
+            "remaining_work_hours": fields.get("Microsoft.VSTS.Scheduling.RemainingWork") or 0,
+            "tags": fields.get("System.Tags", ""),
+            "is_blocked": _is_blocked_item(fields),
+        })
+    return serialized_items
+
+
+def _build_daily_summary(email: str) -> dict[str, Any]:
+    items = _query_assigned_items(email)
+    blocked_items = [item for item in items if item["is_blocked"]]
+    story_items = [item for item in items if item["work_item_type"] == "User Story"]
+    total_story_points = sum(float(item["story_points"] or 0) for item in story_items)
+    remaining_work_hours = sum(float(item["remaining_work_hours"] or 0) for item in items)
+
+    open_prs: list[dict[str, Any]] = []
+    connection = get_client()
+    git = connection.clients.get_git_client()
+    repos = git.get_repositories(project=get_project())
+    for repo in repos:
+        prs = git.get_pull_requests(repository_id=repo.id, search_criteria={"status": "active"})
+        for pr in prs:
+            creator_email = getattr(pr.created_by, "unique_name", "")
+            if email.lower() not in creator_email.lower():
+                continue
+
+            age_days = (datetime.utcnow() - pr.creation_date).days
+            open_prs.append({
+                "pull_request_id": pr.pull_request_id,
+                "title": pr.title,
+                "repository": repo.name,
+                "source_branch": pr.source_ref_name,
+                "target_branch": pr.target_ref_name,
+                "age_days": age_days,
+            })
+
+    return {
+        "generated_at": datetime.utcnow().isoformat() + "Z",
+        "project": get_project(),
+        "user_email": email,
+        "counts": {
+            "assigned_items": len(items),
+            "blocked_items": len(blocked_items),
+            "open_prs": len(open_prs),
+            "user_stories": len(story_items),
+        },
+        "remaining_story_points": total_story_points,
+        "remaining_work_hours": remaining_work_hours,
+        "items": items,
+        "blocked_items": blocked_items,
+        "open_prs": open_prs,
+    }
+
+def _get_active_user() -> str:
+    """Le o email do git config local ou global."""
+    email = _resolve_active_user_email()
+    if email:
+        return f"Usuario ativo: {email}"
+    return "Email nao configurado. Configure AZURE_USER_EMAIL no .env ou git config --global user.email seu@email.com"
+
+
+def _get_my_work_items() -> str:
+    email = _resolve_active_user_email()
+    if not email:
+        return "Email nao configurado. Configure AZURE_USER_EMAIL no .env ou git config --global user.email seu@email.com"
+
+    payload = _build_daily_summary(email)
+    payload.pop("open_prs", None)
+    return _format_json(payload)
+
+
+def _get_my_blocked_items() -> str:
+    email = _resolve_active_user_email()
+    if not email:
+        return "Email nao configurado. Configure AZURE_USER_EMAIL no .env ou git config --global user.email seu@email.com"
+
+    payload = _build_daily_summary(email)
+    return _format_json({
+        "generated_at": payload["generated_at"],
+        "project": payload["project"],
+        "user_email": payload["user_email"],
+        "blocked_count": payload["counts"]["blocked_items"],
+        "blocked_items": payload["blocked_items"],
+    })
+
+
+def _get_my_daily_summary() -> str:
+    email = _resolve_active_user_email()
+    if not email:
+        return "Email nao configurado. Configure AZURE_USER_EMAIL no .env ou git config --global user.email seu@email.com"
+
+    return _format_json(_build_daily_summary(email))
 
 
 def _get_user_stories(email: str) -> str:
