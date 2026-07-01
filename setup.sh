@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env bash
+#!/usr/bin/env bash
 # KwikLedgers Dev Agent - Setup para Linux/WSL
 set -e
 
@@ -6,29 +6,45 @@ echo "=== KwikLedgers Dev Agent Setup (Linux/WSL) ==="
 
 # --- Verificacoes iniciais ---
 command -v python3 >/dev/null 2>&1 || { echo "ERRO: python3 nao encontrado. Instale com: sudo apt install python3"; exit 1; }
-command -v pip3   >/dev/null 2>&1 || { echo "ERRO: pip3 nao encontrado. Instale com: sudo apt install python3-pip"; exit 1; }
-command -v node   >/dev/null 2>&1 || { echo "ERRO: node nao encontrado. Instale com: sudo apt install nodejs npm"; exit 1; }
+command -v node >/dev/null 2>&1 || { echo "ERRO: node nao encontrado. Instale com: sudo apt install nodejs npm"; exit 1; }
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VENV_DIR="$SCRIPT_DIR/mcp_servers/.venv"
+PYTHON_BIN="$VENV_DIR/bin/python"
+STAMP_DIR="$VENV_DIR/.requirements"
+
+if [ ! -x "$PYTHON_BIN" ]; then
+  python3 -m venv "$VENV_DIR"
+fi
+
+mkdir -p "$STAMP_DIR"
+
+write_requirements_stamp() {
+  local server_name=$1
+  local requirements_file="$SCRIPT_DIR/mcp_servers/$server_name/requirements.txt"
+  local stamp_file="$STAMP_DIR/$server_name.sha256"
+
+  sha256sum "$requirements_file" | awk '{print $1}' > "$stamp_file"
+}
 
 # --- 1. Dependencias Python - Azure DevOps MCP ---
 echo ""
 echo "[1/3] Instalando dependencias do MCP Azure DevOps..."
-pip3 install -r "$SCRIPT_DIR/mcp_servers/azure_devops/requirements.txt"
+"$PYTHON_BIN" -m pip install -r "$SCRIPT_DIR/mcp_servers/azure_devops/requirements.txt"
+write_requirements_stamp "azure_devops"
 
 # --- 2. Dependencias Python - Windows Calendar MCP ---
-# No WSL o servidor Windows usa o PowerShell do host para notificacoes
+# No WSL o requirements.txt ignora dependencias exclusivas de Windows
 echo ""
 echo "[2/3] Instalando dependencias do MCP Windows Calendar (via WSL)..."
-pip3 install -r "$SCRIPT_DIR/mcp_servers/windows_calendar/requirements.txt" || {
-  echo "AVISO: pywin32 nao instalavel no Linux — sera usado fallback via PowerShell.exe para notificacoes."
-  pip3 install mcp winotify 2>/dev/null || pip3 install mcp
-}
+"$PYTHON_BIN" -m pip install -r "$SCRIPT_DIR/mcp_servers/windows_calendar/requirements.txt"
+write_requirements_stamp "windows_calendar"
 
 # --- 3. Dependencias Python - Tracking local MCP ---
 echo ""
 echo "[3/3] Instalando dependencias do MCP Local Tracking..."
-pip3 install -r "$SCRIPT_DIR/mcp_servers/local_tracking/requirements.txt"
+"$PYTHON_BIN" -m pip install -r "$SCRIPT_DIR/mcp_servers/local_tracking/requirements.txt"
+write_requirements_stamp "local_tracking"
 
 # --- 4. Variaveis de ambiente ---
 ENV_FILE="$SCRIPT_DIR/.env"
