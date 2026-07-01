@@ -1,11 +1,31 @@
 ﻿# KwikLedgers Dev Agent
 
+Repository name: `kwikledgers-agent`
+
+Folder: `/home/ambra/Kwikledgers/agent`
+
+Description: Azure DevOps-focused Copilot agent repository for daily sprint follow-up, local AI tracking, MCP integration, and implementation guidance across KwikLedgers projects.
+
 Agente de desenvolvimento integrado ao VS Code que:
 - Acessa o Azure DevOps para listar historias, tasks, bugs e PRs do usuario ativo
 - Gera arquivos locais de controle do sprint, log diario e metricas de IA
 - Destaca bloqueios, itens devolvidos por mudanca de estado e story points restantes
 - Analisa a estrutura do projeto para manter consistencia tecnica quando os repositorios estiverem em `projects/`
 - Envia notificacoes e gerencia lembretes no Windows (inclusive via WSL)
+
+## Recommended License Structure
+
+For internal company use, the recommended structure is:
+
+```text
+LICENSE.md
+README.md
+CONTRIBUTING.md
+```
+
+Suggested license label:
+
+- `Proprietary - Internal Use Only`
 
 ## Estrutura
 
@@ -68,6 +88,10 @@ AZURE_USER_EMAIL=seu_email@empresa.com
 AZURE_PROJECT=Kwik Ledgers
 ```
 
+Os MCP servers procuram `.env` automaticamente subindo pela arvore de diretorios.
+Isso permite separar `azure_devops/`, `local_tracking/` e `windows_calendar/` em submodulos Git sem quebrar a descoberta de configuracao.
+Se quiser apontar explicitamente para outro arquivo, defina `KWIKLEDGERS_ENV_FILE` ou `MCP_ENV_FILE`.
+
 #### Passo 4: Recarregar o shell
 ```bash
 source ~/.bashrc   # ou source ~/.zshrc
@@ -103,8 +127,8 @@ cd agent
 ```powershell
 setx AZURE_ORG_URL   "https://dev.azure.com/viwaredevops"
 setx AZURE_PAT       "seu_personal_access_token"
+setx AZURE_USER_EMAIL "seu_email@empresa.com"
 setx AZURE_PROJECT   "Kwik Ledgers"
-setx POSTMAN_API_KEY "sua_api_key_postman"
 ```
 Reinicie o terminal apos configurar.
 
@@ -138,12 +162,39 @@ Abra o Copilot Chat (Ctrl+Alt+I), selecione o agente KwikLedgers Dev Agent e fal
 | Ver prazos | "Quando termina o sprint atual?" |
 | Criar lembrete | "Me lembra amanha as 9h sobre a KL-456" |
 
+## Primeiro Fluxo Recomendado
+
+Depois de configurar o `.env` e permitir os MCP servers no VS Code, use esta sequencia para iniciar o trabalho com o agente:
+
+1. "Quais sao minhas tasks e historias do sprint atual?"
+2. "Atualize meus arquivos de controle do sprint em AI_Tracking."
+3. "Tenho algum item bloqueado ou devolvido para mim?"
+4. "Quero implementar a historia KL-XXX" ou "Quero trabalhar na task KL-XXX"
+
+Ao clonar os repositorios em `projects/`, abra o projeto alvo no workspace e mantenha esse mesmo fluxo: resumo do sprint, sincronizacao do tracking e depois implementacao.
+
+## Estrutura com Submodulos
+
+Se voce separar os MCP servers em submodulos Git dentro de `agent/mcp_servers/`, mantenha esta estrutura:
+
+```text
+agent/
+  .env
+  mcp_servers/
+    azure_devops/      <- pode ser submodulo
+    local_tracking/    <- pode ser submodulo
+    windows_calendar/  <- pode ser submodulo
+    utils/
+```
+
+Com isso, cada servidor encontra automaticamente o `.env` do `agent/` ou um caminho explicitamente configurado.
+
 ## Ferramentas MCP disponíveis
 
 | MCP Server | Ferramentas |
 |---|---|
 | kwikledgers-azure-devops | get_active_user, get_my_work_items, get_my_blocked_items, get_my_daily_summary, get_user_stories, get_sprint_stories, get_story_details, get_open_prs, update_story_status, add_story_comment |
-| kwikledgers-local-tracking | update_task_control, append_daily_action_log, record_ai_metrics, read_tracking_snapshot |
+| kwikledgers-local-tracking | sync_daily_tracking, update_task_control, append_daily_action_log, record_ai_metrics, read_tracking_snapshot |
 | kwikledgers-windows | send_notification, create_calendar_event, get_upcoming_deadlines, schedule_reminder |
 
 ## Saidas Locais
@@ -154,6 +205,7 @@ O agente passa a gerar arquivos em `AI_Tracking/` na raiz do workspace:
 - `AI_Tracking/Task_Control/current-sprint.md`
 - `AI_Tracking/Daily_Action_Logs/YYYY-MM-DD.md`
 - `AI_Tracking/Metrics/ai-usage-log.md`
+- `AI_Tracking/Metrics/sprint-metrics.md`
 
 ## Solucao de Problemas
 
@@ -175,6 +227,10 @@ echo $AZURE_USER_EMAIL
 git config --global user.email
 ```
 Defina `AZURE_USER_EMAIL` se o email do Azure DevOps nao for o mesmo do git.
+
+**Logs de auditoria muito detalhados:**
+- O agente grava auditoria em `AI_Tracking/Audit/mcp-audit.log`.
+- Resumos grandes do Azure sao compactados para manter apenas contagens e IDs principais.
 
 **Notificacoes nao aparecem no WSL:**
 - Verifique se o powershell.exe esta acessivel: `which powershell.exe`

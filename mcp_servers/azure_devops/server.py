@@ -5,24 +5,13 @@ Expoe ferramentas para o agente interagir com historias, PRs e sprints.
 import os
 import json
 import asyncio
+import sys
 import subprocess
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
-# Carrega .env automaticamente - nao precisa configurar variaveis no shell
-_env_file = Path(__file__).parent.parent.parent / ".env"
-if _env_file.exists():
-    try:
-        from dotenv import load_dotenv
-        load_dotenv(_env_file)
-    except ImportError:
-        # fallback manual caso dotenv nao esteja instalado ainda
-        for line in _env_file.read_text().splitlines():
-            line = line.strip()
-            if line and not line.startswith("#") and "=" in line:
-                k, _, v = line.partition("=")
-                os.environ.setdefault(k.strip(), v.strip())
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
@@ -30,6 +19,11 @@ from mcp.types import Tool, TextContent
 from azure.devops.connection import Connection
 from azure.devops.v7_0.work_item_tracking.models import Wiql
 from msrest.authentication import BasicAuthentication
+from utils.env import load_env_file
+from utils.logger import audit
+
+
+load_env_file(Path(__file__))
 
 
 # --- Conexao com Azure DevOps ---
@@ -51,6 +45,7 @@ def get_project():
 server = Server("kwikledgers-azure-devops")
 
 
+@audit("kwikledgers.azure_devops")
 @server.list_tools()
 async def list_tools() -> list[Tool]:
     return [
@@ -76,6 +71,7 @@ async def list_tools() -> list[Tool]:
     ]
 
 
+@audit("kwikledgers.azure_devops")
 @server.call_tool()
 async def call_tool(name: str, arguments: dict) -> list[TextContent]:
     try:
@@ -85,6 +81,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         return [TextContent(type="text", text=f"Erro: {str(e)}")]
 
 
+@audit("kwikledgers.azure_devops")
 async def _dispatch(name: str, arguments: dict) -> str:
     if name == "get_active_user":
         return _get_active_user()
@@ -230,6 +227,7 @@ def _build_daily_summary(email: str) -> dict[str, Any]:
         "open_prs": open_prs,
     }
 
+@audit("kwikledgers.azure_devops")
 def _get_active_user() -> str:
     """Le o email do git config local ou global."""
     email = _resolve_active_user_email()
@@ -238,6 +236,7 @@ def _get_active_user() -> str:
     return "Email nao configurado. Configure AZURE_USER_EMAIL no .env ou git config --global user.email seu@email.com"
 
 
+@audit("kwikledgers.azure_devops")
 def _get_my_work_items() -> str:
     email = _resolve_active_user_email()
     if not email:
@@ -248,6 +247,7 @@ def _get_my_work_items() -> str:
     return _format_json(payload)
 
 
+@audit("kwikledgers.azure_devops")
 def _get_my_blocked_items() -> str:
     email = _resolve_active_user_email()
     if not email:
@@ -263,6 +263,7 @@ def _get_my_blocked_items() -> str:
     })
 
 
+@audit("kwikledgers.azure_devops")
 def _get_my_daily_summary() -> str:
     email = _resolve_active_user_email()
     if not email:
@@ -271,6 +272,7 @@ def _get_my_daily_summary() -> str:
     return _format_json(_build_daily_summary(email))
 
 
+@audit("kwikledgers.azure_devops")
 def _get_user_stories(email: str) -> str:
     """Busca historias atribuidas ao email no Azure DevOps."""
     connection = get_client()
@@ -308,6 +310,7 @@ def _get_user_stories(email: str) -> str:
     return "\n".join(lines)
 
 
+@audit("kwikledgers.azure_devops")
 def _get_sprint_stories() -> str:
     """Busca historias do sprint atual."""
     connection = get_client()
@@ -347,6 +350,7 @@ def _get_sprint_stories() -> str:
     return "\n".join(lines)
 
 
+@audit("kwikledgers.azure_devops")
 def _get_story_details(story_id: int) -> str:
     """Retorna detalhes completos da historia incluindo criterios de aceite e tasks."""
     connection = get_client()
@@ -400,6 +404,7 @@ def _get_story_details(story_id: int) -> str:
     return "\n".join(lines)
 
 
+@audit("kwikledgers.azure_devops")
 def _get_open_prs(email: str) -> str:
     """Lista PRs abertas criadas pelo usuario."""
     connection = get_client()
@@ -428,6 +433,7 @@ def _get_open_prs(email: str) -> str:
     return "PRs abertas:\n\n" + "\n\n".join(open_prs)
 
 
+@audit("kwikledgers.azure_devops")
 def _update_story_status(story_id: int, status: str) -> str:
     """Atualiza o estado de uma historia."""
     connection = get_client()
@@ -438,6 +444,7 @@ def _update_story_status(story_id: int, status: str) -> str:
     return f"Historia KL-{story_id} atualizada para: {status}"
 
 
+@audit("kwikledgers.azure_devops")
 def _add_story_comment(story_id: int, comment: str) -> str:
     """Adiciona comentario a uma historia."""
     connection = get_client()

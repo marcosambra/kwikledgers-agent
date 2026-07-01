@@ -9,22 +9,16 @@ import subprocess
 from datetime import datetime, timedelta
 from pathlib import Path
 
-# Carrega .env automaticamente
-_env_file = Path(__file__).parent.parent.parent / ".env"
-if _env_file.exists():
-    try:
-        from dotenv import load_dotenv
-        load_dotenv(_env_file)
-    except ImportError:
-        for line in _env_file.read_text().splitlines():
-            line = line.strip()
-            if line and not line.startswith("#") and "=" in line:
-                k, _, v = line.partition("=")
-                os.environ.setdefault(k.strip(), v.strip())
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent
+from utils.env import load_env_file
+from utils.logger import audit
+
+
+load_env_file(Path(__file__))
 
 # Detecta se esta rodando dentro do WSL
 IS_WSL = "microsoft" in (open("/proc/version").read().lower() if os.path.exists("/proc/version") else "")
@@ -32,6 +26,7 @@ IS_WSL = "microsoft" in (open("/proc/version").read().lower() if os.path.exists(
 server = Server("kwikledgers-windows")
 
 
+@audit("kwikledgers.windows")
 @server.list_tools()
 async def list_tools() -> list[Tool]:
     return [
@@ -89,6 +84,7 @@ async def list_tools() -> list[Tool]:
     ]
 
 
+@audit("kwikledgers.windows")
 @server.call_tool()
 async def call_tool(name: str, arguments: dict) -> list[TextContent]:
     try:
@@ -98,6 +94,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         return [TextContent(type="text", text=f"Erro: {str(e)}")]
 
 
+@audit("kwikledgers.windows")
 async def _dispatch(name: str, arguments: dict) -> str:
     if name == "send_notification":
         return _send_notification(arguments["title"], arguments["message"], arguments.get("urgency", "normal"))
@@ -125,6 +122,7 @@ def _run_powershell(script: str) -> subprocess.CompletedProcess:
 
 # --- Implementacoes ---
 
+@audit("kwikledgers.windows")
 def _send_notification(title: str, message: str, urgency: str = "normal") -> str:
     """Envia notificacao toast. Funciona em Windows nativo e WSL via powershell.exe."""
     if not IS_WSL:
@@ -167,6 +165,7 @@ def _send_notification(title: str, message: str, urgency: str = "normal") -> str
     return f"Notificacao enviada: {title}"
 
 
+@audit("kwikledgers.windows")
 def _create_calendar_event(
     title: str, start: str, end: str,
     description: str = "", reminder_minutes: int = 30
@@ -207,6 +206,7 @@ def _create_calendar_event(
     return f"Evento criado no Outlook: '{title}' em {start}"
 
 
+@audit("kwikledgers.windows")
 def _get_upcoming_deadlines(days: int = 7) -> str:
     """Le eventos dos proximos N dias do Outlook via PowerShell."""
     now = datetime.now()
@@ -234,6 +234,7 @@ def _get_upcoming_deadlines(days: int = 7) -> str:
     return f"Proximos {days} dias:\n" + "\n".join(f"  {l}" for l in lines)
 
 
+@audit("kwikledgers.windows")
 def _schedule_reminder(title: str, remind_at: str, message: str) -> str:
     """Cria evento curto como lembrete."""
     start_dt = datetime.fromisoformat(remind_at)

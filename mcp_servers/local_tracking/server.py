@@ -5,28 +5,23 @@ Gera e atualiza arquivos locais de controle do sprint, logs diarios e metricas.
 import os
 import json
 import asyncio
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-_env_file = Path(__file__).parent.parent.parent / ".env"
-if _env_file.exists():
-    try:
-        from dotenv import load_dotenv
-        load_dotenv(_env_file)
-    except ImportError:
-        for line in _env_file.read_text().splitlines():
-            line = line.strip()
-            if line and not line.startswith("#") and "=" in line:
-                key, _, value = line.partition("=")
-                os.environ.setdefault(key.strip(), value.strip())
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent
+from utils.env import discover_workspace_root, load_env_file
+from utils.logger import audit
 
 
-ROOT_DIR = Path(os.environ.get("KWIKLEDGERS_ROOT_DIR", Path(__file__).resolve().parents[3]))
+load_env_file(Path(__file__))
+
+ROOT_DIR = discover_workspace_root(Path(__file__))
 TRACKING_DIR = ROOT_DIR / "AI_Tracking"
 TASK_CONTROL_DIR = TRACKING_DIR / "Task_Control"
 DAILY_LOG_DIR = TRACKING_DIR / "Daily_Action_Logs"
@@ -35,9 +30,27 @@ METRICS_DIR = TRACKING_DIR / "Metrics"
 server = Server("kwikledgers-local-tracking")
 
 
+@audit("kwikledgers.local_tracking")
 @server.list_tools()
 async def list_tools() -> list[Tool]:
     return [
+        Tool(
+            name="sync_daily_tracking",
+            description="Atualiza controle do sprint, log diario e metricas operacionais em uma unica chamada",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "summary": {"type": "string", "description": "JSON serializado retornado pelo resumo do Azure"},
+                    "log_title": {"type": "string"},
+                    "log_details": {"type": "string"},
+                    "metrics_title": {"type": "string"},
+                    "metrics_summary": {"type": "string"},
+                    "actions_taken": {"type": "array", "items": {"type": "string"}},
+                    "source": {"type": "string", "default": "agent"},
+                },
+                "required": ["summary", "actions_taken"],
+            },
+        ),
         Tool(
             name="update_task_control",
             description="Cria ou atualiza os arquivos de controle do sprint atual em JSON e Markdown",
@@ -85,6 +98,7 @@ async def list_tools() -> list[Tool]:
     ]
 
 
+@audit("kwikledgers.local_tracking")
 @server.call_tool()
 async def call_tool(name: str, arguments: dict) -> list[TextContent]:
     try:
@@ -94,7 +108,18 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         return [TextContent(type="text", text=f"Erro: {str(error)}")]
 
 
+@audit("kwikledgers.local_tracking")
 async def _dispatch(name: str, arguments: dict) -> str:
+    if name == "sync_daily_tracking":
+        return _sync_daily_tracking(
+            arguments["summary"],
+            arguments["actions_taken"],
+            arguments.get("log_title"),
+            arguments.get("log_details"),
+            arguments.get("metrics_title"),
+            arguments.get("metrics_summary"),
+            arguments.get("source", "agent"),
+        )
     if name == "update_task_control":
         return _update_task_control(arguments["summary"])
     if name == "append_daily_action_log":
@@ -169,6 +194,7 @@ def _detect_returned_items(previous_snapshot: dict[str, Any], current_snapshot: 
     return returned_items
 
 
+@audit("kwikledgers.local_tracking")
 def _update_task_control(summary: str) -> str:
     _ensure_directories()
     payload = _parse_summary(summary)
@@ -248,6 +274,21 @@ def _update_task_control(summary: str) -> str:
     )
 
 
+def _build_default_log_details(payload: dict[str, Any]) -> str:
+    counts = payload.get("counts", {})
+    returned_items = payload.get("returned_items", [])
+    lines = [
+        f"Resumo do sprint para {payload.get('user_email', 'desconhecido')}.",
+        f"Itens atribuídos: {counts.get('assigned_items', 0)}.",
+        f"Itens bloqueados: {counts.get('blocked_items', 0)}.",
+        f"Itens devolvidos detectados: {len(returned_items)}.",
+        f"Story points restantes: {payload.get('remaining_story_points', 0)}.",
+        f"PRs abertas: {counts.get('open_prs', 0)}.",
+    ]
+    return "\n".join(lines)
+
+
+@audit("kwikledgers.local_tracking")
 def _append_daily_action_log(title: str, details: str, source: str) -> str:
     _ensure_directories()
     log_path = DAILY_LOG_DIR / f"{_today_stamp()}.md"
@@ -269,6 +310,7 @@ def _append_daily_action_log(title: str, details: str, source: str) -> str:
     return f"Log atualizado: {log_path}"
 
 
+@audit("kwikledgers.local_tracking")
 def _record_ai_metrics(
     entry_title: str,
     summary: str,
@@ -278,6 +320,7 @@ def _record_ai_metrics(
 ) -> str:
     _ensure_directories()
     metrics_path = METRICS_DIR / "ai-usage-log.md"
+    sprint_metrics_path = METRICS_DIR / "sprint-metrics.md"
     timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%SZ")
 
     if not metrics_path.exists():
@@ -303,9 +346,53 @@ def _record_ai_metrics(
     with metrics_path.open("a", encoding="utf-8") as handle:
         handle.write("\n".join(lines) + "\n")
 
+    if not sprint_metrics_path.exists():
+        sprint_metrics_path.write_text(
+            "# Sprint Metrics Snapshot\n\n"
+            "| Data | Story Points Restantes | Itens Bloqueados | Resumo |\n"
+            "|---|---:|---:|---|\n"
+        )
+
+    sprint_summary = summary.replace("|", "/")
+    with sprint_metrics_path.open("a", encoding="utf-8") as handle:
+        handle.write(
+            f"| {timestamp} | {remaining_story_points if remaining_story_points is not None else '-'} | "
+            f"{blocked_items if blocked_items is not None else '-'} | {sprint_summary} |\n"
+        )
+
     return f"Metricas atualizadas: {metrics_path}"
 
 
+@audit("kwikledgers.local_tracking")
+def _sync_daily_tracking(
+    summary: str,
+    actions_taken: list[str],
+    log_title: str | None,
+    log_details: str | None,
+    metrics_title: str | None,
+    metrics_summary: str | None,
+    source: str,
+) -> str:
+    control_result = _update_task_control(summary)
+    payload = _parse_summary(summary)
+
+    log_result = _append_daily_action_log(
+        log_title or "Sincronizacao diaria do sprint",
+        log_details or _build_default_log_details(payload),
+        source,
+    )
+    metrics_result = _record_ai_metrics(
+        metrics_title or "Sincronizacao diaria",
+        metrics_summary or _build_default_log_details(payload).replace("\n", " "),
+        payload.get("remaining_story_points"),
+        payload.get("counts", {}).get("blocked_items"),
+        actions_taken,
+    )
+
+    return "\n".join([control_result, log_result, metrics_result])
+
+
+@audit("kwikledgers.local_tracking")
 def _read_tracking_snapshot() -> str:
     _ensure_directories()
     snapshot = {
@@ -313,11 +400,13 @@ def _read_tracking_snapshot() -> str:
         "task_control_markdown": str(TASK_CONTROL_DIR / "current-sprint.md"),
         "daily_log": str(DAILY_LOG_DIR / f"{_today_stamp()}.md"),
         "metrics_log": str(METRICS_DIR / "ai-usage-log.md"),
+        "sprint_metrics": str(METRICS_DIR / "sprint-metrics.md"),
         "exists": {
             "task_control": (TASK_CONTROL_DIR / "current-sprint.json").exists(),
             "task_control_markdown": (TASK_CONTROL_DIR / "current-sprint.md").exists(),
             "daily_log": (DAILY_LOG_DIR / f"{_today_stamp()}.md").exists(),
             "metrics_log": (METRICS_DIR / "ai-usage-log.md").exists(),
+            "sprint_metrics": (METRICS_DIR / "sprint-metrics.md").exists(),
         },
     }
     return json.dumps(snapshot, indent=2, ensure_ascii=True)

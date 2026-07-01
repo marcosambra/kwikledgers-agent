@@ -104,9 +104,7 @@ Commits: KL-{id}: descricao curta e clara
 
 1. [kwikledgers-azure-devops] get_active_user()
 2. [kwikledgers-azure-devops] get_my_daily_summary()
-3. [kwikledgers-local-tracking] update_task_control(summary)
-4. [kwikledgers-local-tracking] append_daily_action_log()
-5. [kwikledgers-local-tracking] record_ai_metrics()
+3. [kwikledgers-local-tracking] sync_daily_tracking(summary, actions_taken)
 6. [kwikledgers-windows] get_upcoming_deadlines(days=7) quando notificacoes estiverem disponiveis
 7. Apresenta resumo: itens atribuidos, bloqueios, PRs abertas, story points restantes e alertas de prazo
 8. [kwikledgers-windows] send_notification() quando houver item bloqueado ou item devolvido ao usuario
@@ -118,9 +116,10 @@ Arquivos que devem ser mantidos pelo agente:
   - AI_Tracking/Task_Control/current-sprint.md
   - AI_Tracking/Daily_Action_Logs/YYYY-MM-DD.md
   - AI_Tracking/Metrics/ai-usage-log.md
+  - AI_Tracking/Metrics/sprint-metrics.md
 
 Sempre que o usuario pedir resumo diario, atualizacao do sprint, log de atividade
-ou metricas de IA, atualize esses arquivos primeiro e depois apresente o resumo.
+ou metricas de IA, execute `sync_daily_tracking()` primeiro e depois apresente o resumo.
 
 ## Deteccao de Bloqueios e Retornos
 

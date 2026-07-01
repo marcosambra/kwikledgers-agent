@@ -10,6 +10,13 @@ __pycache__/
 venv/
 env/
 *.egg-info/
+mcp_servers/.venv/
+mcp_servers/**/__pycache__/
+mcp_servers/**/*.py[cod]
+mcp_servers/.pytest_cache/
+mcp_servers/.mypy_cache/
+mcp_servers/.ruff_cache/
+mcp_servers/.python-version
 
 # Dependencias Node
 node_modules/
@@ -25,3 +32,6 @@ node_modules/
 # OS
 .DS_Store
 Thumbs.db
+
+# Workspace output gerado localmente
+AI_Tracking/
