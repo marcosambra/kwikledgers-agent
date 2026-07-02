@@ -19,9 +19,15 @@ Agente de desenvolvimento integrado ao VS Code que:
 
 1. Run `setup.sh` on Linux or WSL, or `setup.ps1` on Windows.
 2. Fill the `.env` file with Azure DevOps credentials and project settings.
-3. Open the workspace in VS Code and allow the MCP servers.
-4. Select `KwikLedgers Dev Agent` in Copilot Chat.
-5. Start with a daily summary and a local tracking sync.
+3. Let the setup synchronize `.vscode/mcp.json` and `.github/agents/kwikledgers-dev.agent.md` into each initialized repository under `../projects/`.
+4. Open the workspace in VS Code and allow the MCP servers.
+5. Select `KwikLedgers Dev Agent` in Copilot Chat.
+6. Start with a daily summary and a local tracking sync.
+
+Standalone re-sync commands:
+
+- Linux/WSL: `bash resync-project-agents.sh`
+- Windows PowerShell: `./resync-project-agents.ps1`
 
 ### How To Use
 
@@ -181,9 +187,15 @@ Reinicie o terminal apos configurar.
 1. Rode `setup.sh` no Linux ou WSL, ou `setup.ps1` no Windows.
 2. Preencha o arquivo `.env` com as credenciais do Azure DevOps e as
   configuracoes do projeto.
-3. Abra o workspace no VS Code e autorize os MCP servers.
-4. Selecione `KwikLedgers Dev Agent` no Copilot Chat.
-5. Comece com o resumo diario e a sincronizacao do tracking local.
+3. Deixe o setup sincronizar `.vscode/mcp.json` e `.github/agents/kwikledgers-dev.agent.md` em cada repositorio inicializado em `../projects/`.
+4. Abra o workspace no VS Code e autorize os MCP servers.
+5. Selecione `KwikLedgers Dev Agent` no Copilot Chat.
+6. Comece com o resumo diario e a sincronizacao do tracking local.
+
+Comandos dedicados de re-sync:
+
+- Linux/WSL: `bash resync-project-agents.sh`
+- Windows PowerShell: `./resync-project-agents.ps1`
 
 ## Guias Do Repositorio
 

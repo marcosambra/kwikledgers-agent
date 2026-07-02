@@ -29,24 +29,29 @@ write_requirements_stamp() {
 
 # --- 1. Dependencias Python - Azure DevOps MCP ---
 echo ""
-echo "[1/3] Instalando dependencias do MCP Azure DevOps..."
+echo "[1/4] Instalando dependencias do MCP Azure DevOps..."
 "$PYTHON_BIN" -m pip install -r "$SCRIPT_DIR/mcp_servers/azure_devops/requirements.txt"
 write_requirements_stamp "azure_devops"
 
 # --- 2. Dependencias Python - Windows Calendar MCP ---
 # No WSL o requirements.txt ignora dependencias exclusivas de Windows
 echo ""
-echo "[2/3] Instalando dependencias do MCP Windows Calendar (via WSL)..."
+echo "[2/4] Instalando dependencias do MCP Windows Calendar (via WSL)..."
 "$PYTHON_BIN" -m pip install -r "$SCRIPT_DIR/mcp_servers/windows_calendar/requirements.txt"
 write_requirements_stamp "windows_calendar"
 
 # --- 3. Dependencias Python - Tracking local MCP ---
 echo ""
-echo "[3/3] Instalando dependencias do MCP Local Tracking..."
+echo "[3/4] Instalando dependencias do MCP Local Tracking..."
 "$PYTHON_BIN" -m pip install -r "$SCRIPT_DIR/mcp_servers/local_tracking/requirements.txt"
 write_requirements_stamp "local_tracking"
 
-# --- 4. Variaveis de ambiente ---
+# --- 4. Sincronizar agente compartilhado nos repositorios de projects/ ---
+echo ""
+echo "[4/4] Sincronizando o agente e os MCPs nos repositorios de projects/..."
+"$PYTHON_BIN" "$SCRIPT_DIR/scripts/sync_project_agent_access.py"
+
+# --- 5. Variaveis de ambiente ---
 ENV_FILE="$SCRIPT_DIR/.env"
 if [ ! -f "$ENV_FILE" ]; then
   cp "$SCRIPT_DIR/.env.example" "$ENV_FILE"
@@ -55,7 +60,7 @@ if [ ! -f "$ENV_FILE" ]; then
   echo "Edite o arquivo antes de usar: nano $ENV_FILE"
 fi
 
-# --- 5. Exportar variaveis no shell profile ---
+# --- 6. Exportar variaveis no shell profile ---
 # Detecta o shell atual pelo processo pai, nao pela variavel (mais confiavel)
 CURRENT_SHELL=$(ps -p $PPID -o comm= 2>/dev/null || echo "bash")
 if echo "$CURRENT_SHELL" | grep -q "zsh"; then
@@ -80,10 +85,11 @@ echo ""
 echo "Proximos passos:"
 echo "  1. Preencha suas credenciais: nano $ENV_FILE"
 echo "  2. Recarregue o shell:        source $PROFILE_FILE"
-echo "  3. Copie o mcp.json para o workspace:"
+echo "  3. O setup ja sincronizou o agente e os MCPs nos repositorios em projects/"
+echo "  4. Copie o mcp.json para o workspace raiz, se necessario:"
 echo "     cp $SCRIPT_DIR/.vscode/mcp.json /caminho/para/Kwikledgers/.vscode/mcp.json"
-echo "  4. Reinicie o VS Code"
-echo "  5. Use o resumo diario do Azure para gerar arquivos em AI_Tracking/"
+echo "  5. Reinicie o VS Code"
+echo "  6. Use o resumo diario do Azure para gerar arquivos em AI_Tracking/"
 echo ""
 echo "Para gerar seu Azure PAT:"
 echo "  https://dev.azure.com/viwaredevops/_usersSettings/tokens"

@@ -27,19 +27,23 @@ function Write-RequirementsStamp {
 }
 
 # 1. Python dependencies - Azure DevOps MCP
-Write-Host "`n[1/3] Instalando dependencias do MCP Azure DevOps..." -ForegroundColor Yellow
+Write-Host "`n[1/4] Instalando dependencias do MCP Azure DevOps..." -ForegroundColor Yellow
 & $PythonBin -m pip install -r "$PSScriptRoot\mcp_servers\azure_devops\requirements.txt"
 Write-RequirementsStamp "azure_devops"
 
 # 2. Python dependencies - Windows Calendar MCP
-Write-Host "`n[2/3] Instalando dependencias do MCP Windows Calendar..." -ForegroundColor Yellow
+Write-Host "`n[2/4] Instalando dependencias do MCP Windows Calendar..." -ForegroundColor Yellow
 & $PythonBin -m pip install -r "$PSScriptRoot\mcp_servers\windows_calendar\requirements.txt"
 Write-RequirementsStamp "windows_calendar"
 
 # 3. Python dependencies - Local Tracking MCP
-Write-Host "`n[3/3] Instalando dependencias do MCP Local Tracking..." -ForegroundColor Yellow
+Write-Host "`n[3/4] Instalando dependencias do MCP Local Tracking..." -ForegroundColor Yellow
 & $PythonBin -m pip install -r "$PSScriptRoot\mcp_servers\local_tracking\requirements.txt"
 Write-RequirementsStamp "local_tracking"
+
+# 4. Sincronizar agente compartilhado nos repositorios de projects/
+Write-Host "`n[4/4] Sincronizando o agente e os MCPs nos repositorios de projects/..." -ForegroundColor Yellow
+& $PythonBin "$PSScriptRoot\scripts\sync_project_agent_access.py"
 
 # 4. Arquivo .env
 $EnvFile = Join-Path $PSScriptRoot ".env"
@@ -58,10 +62,11 @@ Write-Host "     AZURE_ORG_URL=https://dev.azure.com/viwaredevops"
 Write-Host "     AZURE_PAT=seu_pat_aqui"
 Write-Host "     AZURE_PROJECT=Kwik Ledgers"
 Write-Host "     AZURE_USER_EMAIL=seu_email@empresa.com"
-Write-Host "  2. Copie agent\.vscode\mcp.json para a pasta .vscode na raiz do seu workspace"
-Write-Host "  3. Reinicie o VS Code"
-Write-Host "  4. Abra o Chat do Copilot e selecione o agente: KwikLedgers Dev Agent"
-Write-Host "  5. Gere os arquivos em AI_Tracking/ via resumo diario do Azure"
+Write-Host "  2. O setup ja sincronizou o agente e os MCPs nos repositorios em projects/"
+Write-Host "  3. Copie agent\.vscode\mcp.json para a pasta .vscode na raiz do seu workspace, se necessario"
+Write-Host "  4. Reinicie o VS Code"
+Write-Host "  5. Abra o Chat do Copilot e selecione o agente: KwikLedgers Dev Agent"
+Write-Host "  6. Gere os arquivos em AI_Tracking/ via resumo diario do Azure"
 Write-Host ""
 Write-Host "Para gerar o Azure PAT:"
 Write-Host "  https://dev.azure.com/viwaredevops/_usersSettings/tokens"

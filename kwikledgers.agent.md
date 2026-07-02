@@ -132,8 +132,47 @@ Sempre que o assunto for sprint atual, risco, prazo, prioridade ou progresso do
 projeto:
   - contextualize-se com todas as historias do sprint atual
   - use `project_progress` como fonte primaria da saude do projeto
+  - trate o `goal` do sprint como importante; se a API nao o expuser, deixe isso explicito na resposta
   - use `get_sprint_stories()` quando precisar detalhar o mapa completo de historias
+  - use `get_sprint_stories_detailed()` quando precisar description e acceptance criteria de todas as historias do sprint
+  - use `get_sprint_stories_detailed()` automaticamente quando o usuario pedir para entender todas as historias do sprint, revisar descricoes, criterios de aceite ou contexto completo do backlog do sprint
   - nao responda apenas com itens atribuidos ao usuario quando a pergunta for sobre progresso do projeto como um todo
+
+## Mutacoes no Azure DevOps (OBRIGATORIO)
+
+- NUNCA execute operacoes mutaveis no Azure DevOps sem pedido explicito do usuario na conversa atual.
+- Antes de qualquer escrita, mostre um preview objetivo do que sera enviado: ferramenta, tipo do item, campos alterados, item pai, iteration de destino, sprint exata de destino quando houver, story points, horas originais/restantes/gastas, comentario, status e qualquer texto livre relevante.
+- Apos mostrar o preview, AGUARDE a aprovacao explicita do usuario antes de chamar ferramentas como `create_work_item`, `update_work_item_content`, `update_work_item_effort`, `move_work_item_to_next_sprint`, `update_story_status` ou `add_story_comment`.
+- Se o usuario pedir apenas para preparar, rascunhar ou revisar, entregue o payload ou plano e NAO execute a escrita.
+
+## Criacao e Esforco de Work Items
+
+- Use `AZURE_TEAM` do arquivo `.env` como contexto autoritativo do squad no Azure DevOps sempre que essa variavel estiver preenchida.
+- Use `create_work_item` para criar `Task`, `User Story`, `Bug` e `Technical Debt` quando o usuario pedir novos itens no Azure DevOps.
+- Antes de preparar ou criar um `Technical Debt`, execute `find_similar_technical_debts` com `repository_name`, titulo e contexto tecnico resumido para detectar duplicidade, sugerir itens parecidos e atualizar o contexto local do repositorio em `AI_Tracking/Repo_Work_Item_Context/technical_debts/`.
+- No preview de `Technical Debt`, mostre explicitamente se ja existe item igual, quais itens parecidos foram encontrados e qual arquivo de contexto local do repositorio foi atualizado.
+- Antes de qualquer escrita de `Technical Debt`, mostre o payload completo do item pai e de todas as `Task` filhas planejadas. O preview deve incluir titulo, descricao, criterios de aceite, iteration de destino, esforco e observacoes relevantes de cada filho.
+- Cada `Task` filha planejada deve incluir uma secao objetiva de `Sugestao ao dev` para deixar claro risco, cuidado de implementacao, dependencias, validacoes ou pontos de atencao antes da subida.
+- Se houver indicio de que o debito tecnico ou parte dele ja esta implementado no codigo, salve o preview completo no cache provisório `AI_Tracking/Repo_Work_Item_Context/technical_debt_previews/<repo>.json` usando `save_technical_debt_preview_cache` antes de qualquer escrita no Azure DevOps.
+- Aceite tambem pedidos em linguagem natural como `historia`, `story`, `bug`, `task` e `debito tecnico`; a ferramenta resolve o tipo real suportado pelo projeto.
+- Quando o usuario pedir `debito tecnico`, use `Technical Debt` como `work_item_type` padrao, a menos que ele peca outro tipo explicitamente.
+- Para debitos tecnicos do repositorio `kl_store`, prefixe sempre o titulo com `[KL STORE] ` seguido do nome objetivo do debito tecnico.
+- Nao classifique debito tecnico como `grave` no preview ou no titulo, a menos que o usuario peca essa qualificacao explicitamente.
+- Quando o destino for a `proxima sprint`, use sempre `sprint atual + 1` dentro do ano atual e mostre essa sprint exata no preview antes da escrita no Azure DevOps.
+- Quando o novo item precisar nascer abaixo de outro work item, inclua `parent_work_item_id` no preview e na chamada.
+- Use `update_work_item_effort` quando o usuario quiser registrar horas gastas (`completed_work_hours`), horas restantes (`remaining_work_hours`), estimativa original (`original_estimate_hours`) ou ajustar `story_points`.
+- Se o usuario pedir um campo de esforco que o tipo do item nao suporta, explique isso no preview e nao esconda campos ignorados.
+- Se o processo do Azure DevOps nao suportar `Acceptance Criteria` para `Task`, preserve esses criterios dentro da propria `Description` da task em uma secao `Criterios de aceite`, em vez de descartalos.
+- Todo `Technical Debt` deve ter as tasks planejadas na conversa antes da escrita no Azure DevOps.
+- Quando o usuario aprovar a criacao de um `Technical Debt`, crie tambem as `Task` filhas planejadas e vincule cada uma ao item pai com `parent_work_item_id`.
+- O texto de `Technical Debt` e de suas `Task` filhas deve ser o mais descritivo possivel sem ficar prolixo: explique contexto, problema, impacto e abordagem em poucas linhas objetivas.
+- Quando o usuario pedir preview de `Technical Debt`, mostre sempre o item pai e todas as `Task` filhas juntas na mesma resposta antes de subir qualquer coisa.
+- Quando ajudar, inclua dicas tecnicas, nomes de classes, metodos ou arquivos como texto simples pronto para Azure DevOps, por exemplo `app/services/broadcast_service.py` ou `CartRepository.mark_webhook_sent`.
+- Formate descricoes para Azure DevOps com secoes curtas, listas e criterios estruturados; o preview no chat pode usar Markdown, mas o payload real do Azure deve ser enviado em rich text HTML simples compativel com a interface do Azure DevOps.
+- Nunca envie Markdown cru em `Description` ou `Acceptance Criteria` para o Azure DevOps. Quando o item ja existir com Markdown-like text, use `update_work_item_content` para regravar esses campos no formato HTML simples esperado pela interface do Azure.
+- Em textos de Azure DevOps, prefira titulos e secoes em portugues do Brasil quando o item estiver sendo redigido para o time local, salvo pedido contrario do usuario.
+- Quando um snippet de codigo ajudar a explicar o problema ou a abordagem, inclua `Arquivo:` e `Linhas:` como texto simples e um bloco cercado por ```python para que o payload final preserve um trecho formatado em `<pre><code>` no Azure DevOps.
+- Evite links Markdown do workspace dentro do payload do Azure.
 
 ## Deteccao de Bloqueios e Retornos
 
@@ -173,7 +212,7 @@ PASSO 5 - Implementar incrementalmente
   Ordem: Migration -> Model/Interface -> Repository -> Service
          -> FormRequest -> Controller + Route -> Testes
   - Apos cada camada: commit referenciando KL-{id}
-  - Apos cada task concluida: [kwikledgers-azure-devops] add_story_comment()
+  - Apos cada task concluida: so execute [kwikledgers-azure-devops] add_story_comment() se o usuario pedir e aprovar o preview do comentario
 
 PASSO 6 - Executar testes (OBRIGATORIO antes da PR)
   Use os testes nativos do projeto afetado.
@@ -214,7 +253,7 @@ PASSO 8 - Criar PR com o template do projeto
       - [ ] Voce adicionou alguma nova fila/comando? se sim qual:
 
 PASSO 9 - Finalizar
-  [kwikledgers-azure-devops] update_story_status(id, "Em Revisao")
+  Somente se o usuario pedir e aprovar o preview: [kwikledgers-azure-devops] update_story_status(id, "Em Revisao")
   [kwikledgers-local-tracking] append_daily_action_log() com a entrega realizada
   [kwikledgers-windows] send_notification("KL-{id} concluida", "PR criada!")
 
