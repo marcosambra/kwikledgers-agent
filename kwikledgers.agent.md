@@ -54,6 +54,12 @@ tools:
 - tasks com titulo ou natureza de `Implantacao` nao devem ser tratadas como pendencia de implementacao tecnica nem como escopo restante do agente de desenvolvimento, salvo quando o usuario pedir explicitamente ajuda com deploy, rollout, publicacao ou operacao equivalente
 - ao responder sobre o que falta de uma historia para o escopo implementado no chat atual, o agente nao deve bloquear a conclusao tecnica do backend por existir uma child de `Implantacao`
 
+## Regra de Resolucao de Sprint
+
+- quando o usuario pedir uma sprint por numero ou nome base sem qualificador adicional, o agente deve priorizar a sprint principal numerada e nao deve assumir automaticamente iteracoes paralelas com sufixos ou qualificadores como `Sustentacao`, `Hotfix`, `Suporte` ou equivalentes
+- se existirem duas iteracoes com o mesmo numero base, como `Sprint 16` e `Sprint 16 - Sustentacao`, a referencia sem qualificador deve significar a sprint principal sem o sufixo
+- o agente so pode consultar, resumir ou mover contexto para uma sprint paralela de sustentacao quando o usuario pedir isso explicitamente
+
 ## Regra Absoluta de Fechamento de Historia
 
 - ao encerrar uma child ou outro item no contexto de historia, o agente deve primeiro registrar no tracking local o horario de fechamento
@@ -273,6 +279,7 @@ projeto:
   - contextualize-se com todas as historias do sprint atual
   - use `project_progress` como fonte primaria da saude do projeto
   - trate o `goal` do sprint como importante; se a API nao o expuser, deixe isso explicito na resposta
+  - quando houver iteracoes paralelas com o mesmo numero base, nao assuma a variante de `Sustentacao` sem pedido explicito do usuario
   - use `get_sprint_stories()` quando precisar detalhar o mapa completo de historias
   - use `get_sprint_stories_detailed()` quando precisar description e acceptance criteria de todas as historias do sprint
   - use `get_sprint_stories_detailed()` automaticamente quando o usuario pedir para entender todas as historias do sprint, revisar descricoes, criterios de aceite ou contexto completo do backlog do sprint
@@ -292,6 +299,8 @@ projeto:
 
 - Use `AZURE_TEAM` do arquivo `.env` como contexto autoritativo do squad no Azure DevOps sempre que essa variavel estiver preenchida.
 - Use `create_work_item` para criar `Task`, `User Story`, `Bug` e `Technical Debt` quando o usuario pedir novos itens no Azure DevOps.
+- Antes de criar ou preparar um `Bug`, confirme no preview os campos obrigatorios do processo atual para esse tipo. Quando o processo exigir campos extras como `System Info`, `Area` ou campos customizados obrigatorios como `Origem Erro`, inclua esses campos explicitamente no preview e no payload real.
+- Se a ferramenta padrao `create_work_item` nao expuser todos os campos obrigatorios exigidos pelo processo para `Bug`, nao tente subir no escuro. Mostre o preview corrigido com os campos faltantes e use um caminho compativel com a API do Azure DevOps somente depois de aprovacao explicita do usuario.
 - Antes de preparar ou criar um `Technical Debt`, execute `find_similar_technical_debts` com `repository_name`, titulo e contexto tecnico resumido para detectar duplicidade, sugerir itens parecidos e atualizar o contexto local do repositorio em `AI_Tracking/Repo_Work_Item_Context/technical_debts/`.
 - No preview de `Technical Debt`, mostre explicitamente se ja existe item igual, quais itens parecidos foram encontrados e qual arquivo de contexto local do repositorio foi atualizado.
 - Antes de qualquer escrita de `Technical Debt`, mostre o payload completo do item pai e de todas as `Task` filhas planejadas. O preview deve incluir titulo, descricao, criterios de aceite, iteration de destino, esforco e observacoes relevantes de cada filho.
