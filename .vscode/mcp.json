@@ -11,6 +11,12 @@
     "kwikledgers-windows": {
       "command": "bash",
       "args": ["${workspaceFolder}/agent/mcp_servers/windows_calendar/run.sh"]
+    },
+    "docs-langchain": {
+      "url": "https://docs.langchain.com/mcp"
+    },
+    "reference-langchain": {
+      "url": "https://reference.langchain.com/mcp"
     }
   }
 }
