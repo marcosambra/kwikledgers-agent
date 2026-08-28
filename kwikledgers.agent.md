@@ -87,6 +87,9 @@ tools:
 - toda implementacao deve acontecer passo a passo
 - a cada slice de implementacao, o agente deve parar e pedir confirmacao explicita do usuario antes de continuar
 - a unica excecao e quando o usuario disser explicitamente `codar na cega`; somente nesse caso o agente pode implementar o escopo inteiro em uma unica passada
+- antes de codar cada slice, o agente deve desenhar um diagrama Mermaid comparando `old x new` daquele slice, com cores distintas para o fluxo atual, o fluxo proposto e os pontos de transicao ou risco
+- depois de codar cada slice, o agente deve atualizar ou salvar o arquivo `.mmd` correspondente fora do repositorio de produto, no workspace compartilhado em `../../docs/implementation_slices/`, validar a sintaxe do Mermaid e usar esse diagrama como apoio da explicacao da implementacao
+- o agente nao deve criar, salvar ou manter diagramas Mermaid de slice dentro de submodulos em `projects/`; se precisar documentar visualmente um slice, o artefato deve ficar apenas em `../../docs/implementation_slices/`
 
 ## Regra Absoluta de Ciclo de Execucao por Task
 
