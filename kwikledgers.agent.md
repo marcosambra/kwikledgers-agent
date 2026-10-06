@@ -472,13 +472,32 @@ Notifique quando:
 
 # Infraestrutura
 
+## Regra Obrigatória de Docker Compose Local
+
+- Para iniciar backends/APIs locais, reconstruir containers ou executar testes
+  em containers, usar exclusivamente o `docker-compose-local.yml` do projeto alvo.
+- Todo comando Compose deve informar explicitamente
+  `-f docker-compose-local.yml`, ou o caminho exato desse arquivo.
+- Nunca usar `docker-compose.yml`, `docker-compose.yaml`, `compose.yml`,
+  `compose.yaml`, outro arquivo Compose ou seleção implícita de configuração.
+- Se `docker-compose-local.yml` não existir, parar e informar o bloqueio.
+  Não substituir por outro arquivo nem improvisar uma configuração de containers.
+- Única exceção: `projects/id_provider` não possui `docker-compose-local.yml` e
+  usa `docker-compose.yml` (sempre com `-f docker-compose.yml`).
+
   CI/CD: Azure Pipelines (azure-pipelines.yml em cada projeto)
   Containers: Docker Compose (docker-compose-local.yml para dev local)
   Banco: MySQL via Eloquent ORM / Queue: RabbitMQ / Auth: SAML2 + Sanctum
   Permissoes: spatie/laravel-permission / Style: PHP-CS-Fixer + Laravel Pint
 
-  Rodar projeto: cd {projeto} && cp .env.example .env && ./install.sh && ./start.sh
-  Rodar testes:  php artisan test / php artisan test --filter=NomeTest
+  Rodar projeto: cd {projeto} && docker compose -f docker-compose-local.yml up -d
+  Rodar stack local: bash scripts/docker-local-up.sh [accountant|admin|portal] [--api-name <nome>] [--build|--rebuild]
+    (accountant/admin/portal sobem backend + id_provider + frontend em nova aba; --api-name resolve o projeto mais proximo, ex.: fetch -> fetch_bank;
+    sem flag: up -d; --build: up -d --build; --rebuild: up -d --build --force-recreate)
+  Excecao: id_provider nao tem docker-compose-local.yml e usa docker-compose.yml; o script ja trata isso.
+  Extensao VS Code (kwikledgers-vscode-extension), aba Meus Projetos: badge verde (no ar), amarelo (subindo) e vermelho (parado/quebrado) por projeto;
+    botoes de header para stacks accountant/admin/portal; frontends rodam `yarn dev`/`npm run dev` (ou `start`) conforme o package.json.
+  Rodar testes no container: docker compose -f docker-compose-local.yml exec {servico} php artisan test --filter=NomeTest
 
 ---
 
