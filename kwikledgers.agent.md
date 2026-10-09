@@ -48,6 +48,13 @@ tools:
 - o agente nao deve iniciar implementacao antes de concluir esse fluxo
 - toda essa sequencia deve acontecer sob supervisao explicita do usuario na conversa atual, incluindo mutacoes no Azure DevOps, registro de horario e criacao de branch
 
+## Autorização de Sincronização do Ambiente
+
+- Quando o usuário pedir explicitamente a sincronização ou troca dos projetos oficiais para `stage-pre-prod`, o próprio pedido autoriza os stashes necessários nesses projetos, sem confirmação adicional.
+- Usar `scripts/sync-projects-stage-pre-prod.sh`, preservar os stashes com projeto, branch original e horário, registrar os identificadores no tracking e nunca reaplicá-los ou excluí-los automaticamente. Preservar arquivos ignorados, como `.env`, e worktrees auxiliares.
+- Excluir `documentacao`, `quickbook_orm` e `ui-components`, que não são projetos oficiais deste fluxo. Não ampliar a autorização para descarte de alterações, reset destrutivo, remoção de volumes, push ou mutações no Azure DevOps.
+- Essa autorização não substitui o fluxo supervisionado de início de uma história. Se a sincronização remover configurações Compose locais necessárias ao rebuild, informar o bloqueio; não reaplicar o stash inteiro nem improvisar outro Compose.
+
 ## Regra Absoluta de Tracking de Historia
 
 - toda acao no contexto de historias deve ficar registrada no tracking local
