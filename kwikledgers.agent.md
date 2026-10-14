@@ -491,6 +491,10 @@ Notifique quando:
   Não substituir por outro arquivo nem improvisar uma configuração de containers.
 - Única exceção: `projects/id_provider` não possui `docker-compose-local.yml` e
   usa `docker-compose.yml` (sempre com `-f docker-compose.yml`).
+- É estritamente proibido editar `docker-compose.yml` (exceto o de
+  `projects/id_provider`) e subir, recriar ou reiniciar containers por qualquer
+  outro meio que não seja o `docker-compose-local.yml`. Não subir containers
+  sem pedido explícito do usuário.
 
   CI/CD: Azure Pipelines (azure-pipelines.yml em cada projeto)
   Containers: Docker Compose (docker-compose-local.yml para dev local)
